@@ -53,6 +53,17 @@ Usager* retournerElementEnQueue(ListeUsagers* liste) {
     return courant;
 }
 
+//Fonction pour générer un usager aléatoire
+Usager randomUsager(nombreEtage) {
+    Usager usager;
+    usager.etage_appel = rand() % nombreEtage;
+    usager.etage_destination = rand() % nombreEtage;
+    if usager.etage_appel == etage_destination {
+        usager.etage_destination = (etage_destination + 1) % nombreEtage;
+    }
+    return usager;
+}
+
 int main() {
     // Initialisation d'une liste vide
     ListeUsagers liste;
