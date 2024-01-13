@@ -5,9 +5,12 @@
 #include <sys/wait.h>
 #include <time.h>
 
+#define CAPACITE_MAX
+
 // Structure pour représenter l'ascenseur
 typedef struct {
     int etage_actuel;
+    ChainedListUsagers charge;
 } Ascenseur;
 
 // Structure pour représenter un usager
@@ -18,6 +21,7 @@ typedef struct {
 
 // Fonction pour faire avancer l'ascenseur d'un étage
 void deplacerAscenseur(Ascenseur *ascenseur, int destination) {
+
     printf("Ascenseur : Déplacement de l'étage %d à l'étage %d\n", ascenseur->etage_actuel, destination);
 
     // Simulation du déplacement de l'ascenseur
@@ -47,6 +51,55 @@ void processusUsager(Usager *usager, int tube_ascenseur[2]) {
     // Le processus usager se termine
     exit(0);
 }
+
+void ordonanceurAscenseur(Ascenseur ascenseur, int tube_ascenseur[2]){
+    Usager usagers[100];
+    int size_usagers = 0;
+
+    // Le processus principal gère les déplacements de l'ascenseur
+    for (int i = 0; i < 2; i++) {
+        read(tube_ascenseur[0], &usagers[size_usagers], sizeof(Usager));
+
+        // Déplacement de l'ascenseur vers l'étage d'appel de l'usager
+        deplacerAscenseur(&ascenseur, usagers[size_usagers].etage_appel);
+
+        // Déplacement de l'ascenseur vers l'étage de destination de l'usager
+        deplacerAscenseur(&ascenseur, usagers[size_usagers].etage_destination);
+
+        // Desservir l'usager
+        desservirUsager(&usagers[size_usagers]);
+        
+        // Informer le processus usager que l'ascenseur a desservi l'usager
+        write(tube_ascenseur[1], &usagers[size_usagers], sizeof(Usager));
+        size_usagers++;
+    }
+}
+
+
+// fonction qui renvoir la destination de l'ascenseur en fonction des destinations souhaitées des usagers
+int deplacerFIFO(Ascenseur *ascenseur){
+
+}
+// fonction pour savoir a quel etage aller pour récupérer un usager en fonction de la direction de destination
+int recupererFIFO(Ascenseur *ascenseur, ChainedListUsagers usagers){
+
+}
+
+void deplacer(Ascenseur *ascenseur, ChainedListUsagers usagers){
+
+    if(ascenseur->charge.length == 0){
+        recupererFIFO(ascenseur, usagers);
+    }else{
+        if(usager_sur_lee_chemin.direction == ascenseur.direction){
+            prendre_usager();
+        }
+        deplacer();
+    }
+    
+
+    //deplacer l'ascenseur
+}
+
 
 int main() {
     // Initialisation de la graine pour la génération aléatoire basée sur le temps actuel
@@ -82,27 +135,16 @@ int main() {
         // Code du processus fils pour le deuxième usager
         processusUsager(&usager2, tube_ascenseur);
     }
-
     close(tube_ascenseur[1]);  // Fermer le côté d'écriture du tube dans le processus principal
 
-    // Le processus principal gère les déplacements de l'ascenseur
-    for (int i = 0; i < 2; i++) {
-        Usager usager;
-        read(tube_ascenseur[0], &usager, sizeof(Usager));
-
-        // Déplacement de l'ascenseur vers l'étage d'appel de l'usager
-        deplacerAscenseur(&ascenseur, usager.etage_appel);
-
-        // Déplacement de l'ascenseur vers l'étage de destination de l'usager
-        deplacerAscenseur(&ascenseur, usager.etage_destination);
-
-        // Desservir l'usager
-        desservirUsager(&usager);
-
-        // Informer le processus usager que l'ascenseur a desservi l'usager
-        write(tube_ascenseur[1], &usager, sizeof(Usager));
+    ordonanceurAscenseur(ascenseur,tube_ascenseur);
+    while(1){
+        if(ascenseur->charge == 0){
+            ordonancement();
+        }else{
+            deplacer();
+        }
     }
-
     // Attendre que les processus fils se terminent
     waitpid(pid1, NULL, 0);
     waitpid(pid2, NULL, 0);
