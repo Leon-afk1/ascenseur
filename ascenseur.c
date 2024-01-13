@@ -82,17 +82,18 @@ int deplacerFIFO(Ascenseur *ascenseur){
 }
 // fonction pour savoir a quel etage aller pour récupérer un usager en fonction de la direction de destination
 int recupererFIFO(Ascenseur *ascenseur, ChainedListUsagers usagers){
-
+    if(usager_sur_lee_chemin.direction == ascenseur.direction){
+        prendre_usager();
+    }
 }
 
 void deplacer(Ascenseur *ascenseur, ChainedListUsagers usagers){
+    int destination;
 
     if(ascenseur->charge.length == 0){
-        recupererFIFO(ascenseur, usagers);
+        destination = recupererFIFO(ascenseur, usagers);
     }else{
-        if(usager_sur_lee_chemin.direction == ascenseur.direction){
-            prendre_usager();
-        }
+        
         deplacer();
     }
     
