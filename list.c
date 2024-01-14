@@ -187,6 +187,7 @@ void ajouterDecroissantAppel(ListeUsagers* liste, Usager* nouvelUsager) {
     liste->size++;
 }
 
+/*
 int main() {
     // Initialisation d'une liste vide
     ListeUsagers liste;
@@ -226,3 +227,4 @@ int main() {
 
     return 0;
 }
+*/
