@@ -80,14 +80,26 @@ void ordonanceurAscenseur(Ascenseur ascenseur, int tube_ascenseur[2]){
 
 
 Usager randomUsager() {
-    // 1/3 
     Usager usager;
-    usager.etage_appel = rand() % ETAGES;
-    usager.etage_destination = rand() % ETAGES;
-    if (usager.etage_appel == usager.etage_destination) {
-        usager.etage_destination = (usager.etage_destination + 1) % ETAGES;
+    // 1/3 
+    int etage_0 = rand() % 6;
+    printf("etage 0 : %d\n", etage_0);
+    if (etage_0 == 0) {
+        usager.etage_appel = 0;
+        usager.etage_destination = rand() % (ETAGES - 1) + 1;
+        return usager;
+    }else if (etage_0 == 1) {
+        usager.etage_appel = rand() % (ETAGES - 1) + 1;
+        usager.etage_destination = 0;
+        return usager;
+    }else{
+        usager.etage_appel = rand() % (ETAGES);
+        usager.etage_destination = rand() % (ETAGES);
+        while (usager.etage_appel == usager.etage_destination) {
+            usager.etage_destination = rand() % (ETAGES);
+        }
+        return usager;
     }
-    return usager;
 }
 
 void threadUsagers(ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants){
@@ -182,46 +194,52 @@ void processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsager
 
 int main() {
     // Initialisation de la graine pour la génération aléatoire basée sur le temps actuel
-    srand((unsigned int)time(NULL));
+    // srand((unsigned int)time(NULL));
 
-    Ascenseur ascenseur;
-    ascenseur.etage_actuel = 0;
+    // Ascenseur ascenseur;
+    // ascenseur.etage_actuel = 0;
 
-    int tube_ascenseur[2];
-    pipe(tube_ascenseur);
+    // int tube_ascenseur[2];
+    // pipe(tube_ascenseur);
 
-    // Exemple d'appel d'ascenseur avec deux usagers
-    Usager usager1;
-    usager1.etage_appel = rand() % 10;             // Étage d'appel aléatoire entre 0 et 9
-    usager1.etage_destination = rand() % 10;       // Étage de destination aléatoire entre 0 et 9
+    // // Exemple d'appel d'ascenseur avec deux usagers
+    // Usager usager1;
+    // usager1.etage_appel = rand() % 10;             // Étage d'appel aléatoire entre 0 et 9
+    // usager1.etage_destination = rand() % 10;       // Étage de destination aléatoire entre 0 et 9
 
-    Usager usager2;
-    usager2.etage_appel = rand() % 10;             // Étage d'appel aléatoire entre 0 et 9
-    usager2.etage_destination = rand() % 10;       // Étage de destination aléatoire entre 0 et 9
+    // Usager usager2;
+    // usager2.etage_appel = rand() % 10;             // Étage d'appel aléatoire entre 0 et 9
+    // usager2.etage_destination = rand() % 10;       // Étage de destination aléatoire entre 0 et 9
 
-    // Créer un processus fils pour le premier usager
-    pid_t pid1 = fork();
+    // // Créer un processus fils pour le premier usager
+    // pid_t pid1 = fork();
 
-    if (pid1 == 0) {
-        // Code du processus fils pour le premier usager
-        processusUsager(&usager1, tube_ascenseur);
+    // if (pid1 == 0) {
+    //     // Code du processus fils pour le premier usager
+    //     processusUsager(&usager1, tube_ascenseur);
+    // }
+
+    // // Créer un processus fils pour le deuxième usager
+    // pid_t pid2 = fork();
+
+    // if (pid2 == 0) {
+    //     // Code du processus fils pour le deuxième usager
+    //     processusUsager(&usager2, tube_ascenseur);
+    // }
+    // close(tube_ascenseur[1]);  // Fermer le côté d'écriture du tube dans le processus principal
+
+    // //threads 
+    // processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants);
+
+    // // Attendre que les processus fils se terminent
+    // waitpid(pid1, NULL, 0);
+    // waitpid(pid2, NULL, 0);
+
+    for (int i =  0; i < 10; i++) {
+        Usager usager = randomUsager();
+        printf("Etage appel : %d, Etage destination : %d\n", usager.etage_appel, usager.etage_destination);
     }
 
-    // Créer un processus fils pour le deuxième usager
-    pid_t pid2 = fork();
-
-    if (pid2 == 0) {
-        // Code du processus fils pour le deuxième usager
-        processusUsager(&usager2, tube_ascenseur);
-    }
-    close(tube_ascenseur[1]);  // Fermer le côté d'écriture du tube dans le processus principal
-
-    //threads 
-    processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants);
-
-    // Attendre que les processus fils se terminent
-    waitpid(pid1, NULL, 0);
-    waitpid(pid2, NULL, 0);
 
     return 0;
 }
