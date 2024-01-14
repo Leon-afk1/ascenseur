@@ -27,11 +27,11 @@ UsagerNode* creerUsager(Usager usager) {
     return nouvelUsager;
 }
 
-ListeUsagers* supprimerTete(ListeUsagers* liste){
+void supprimerTete(ListeUsagers* liste){
     UsagerNode* nouvelle_tete = liste->tete->suivant;
     free(liste->tete);
     liste->tete = nouvelle_tete;
-    return liste;
+    liste->size--;
 }
 
 /*
@@ -110,6 +110,83 @@ void libererListe(ListeUsagers* liste){
 }
 
 
+void ajouterCroissantDestination(ListeUsagers* liste, Usager nouvelUsager) {
+    UsagerNode* node = creerUsager(nouvelUsager);
+    UsagerNode* courant = liste->tete;
+    UsagerNode* precedent = NULL;
+    while (courant != NULL && courant->usager.etage_destination < nouvelUsager.etage_destination) {
+        precedent = courant;
+        courant = courant->suivant;
+    }
+    if (precedent == NULL) {
+        node->suivant = liste->tete;
+        liste->tete = node;
+    }
+    else {
+        precedent->suivant = node;
+        node->suivant = courant;
+    }
+    liste->size++;
+}
+
+void ajouterDecroissantDestination(ListeUsagers* liste, Usager nouvelUsager) {
+    UsagerNode* node = creerUsager(nouvelUsager);
+    UsagerNode* courant = liste->tete;
+    UsagerNode* precedent = NULL;
+    while (courant != NULL && courant->usager.etage_destination > nouvelUsager.etage_destination) {
+        precedent = courant;
+        courant = courant->suivant;
+    }
+    if (precedent == NULL) {
+        node->suivant = liste->tete;
+        liste->tete = node;
+    }
+    else {
+        precedent->suivant = node;
+        node->suivant = courant;
+    }
+    liste->size++;
+}
+
+
+void ajouterCroissantAppel(ListeUsagers* liste, Usager nouvelUsager) {
+    UsagerNode* node = creerUsager(nouvelUsager);
+    UsagerNode* courant = liste->tete;
+    UsagerNode* precedent = NULL;
+    while (courant != NULL && courant->usager.etage_appel < nouvelUsager.etage_appel) {
+        precedent = courant;
+        courant = courant->suivant;
+    }
+    if (precedent == NULL) {
+        node->suivant = liste->tete;
+        liste->tete = node;
+    }
+    else {
+        precedent->suivant = node;
+        node->suivant = courant;
+    }
+    liste->size++;
+}
+
+void ajouterDecroissantAppel(ListeUsagers* liste, Usager nouvelUsager) {
+    UsagerNode* node = creerUsager(nouvelUsager);
+    UsagerNode* courant = liste->tete;
+    UsagerNode* precedent = NULL;
+    while (courant != NULL && courant->usager.etage_appel > nouvelUsager.etage_appel) {
+        precedent = courant;
+        courant = courant->suivant;
+    }
+    if (precedent == NULL) {
+        node->suivant = liste->tete;
+        liste->tete = node;
+    }
+    else {
+        precedent->suivant = node;
+        node->suivant = courant;
+    }
+    liste->size++;
+}
+
 int main() {
     // Initialisation d'une liste vide
     ListeUsagers liste;
@@ -127,8 +204,15 @@ int main() {
     ajouterEnTete(&liste, usager3);
 
     printListe(&liste);
-    supprimerUsager(&liste, &usager3);
+
+
+    Usager usager4 = {7,6};
+    ajouterDecroissantDestination(&liste, usager4);
+
     printListe(&liste);
+    supprimerTete(&liste);
+    printListe(&liste);
+    
 
 
     // Libération de la mémoire (à faire à la fin du programme)

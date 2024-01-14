@@ -6,12 +6,12 @@
 #include <time.h>
 #include <list.c>
 
-#define CAPACITE_MAX
+#define CAPACITE_MAX = 10
 
 // Structure pour représenter l'ascenseur
 typedef struct {
     int etage_actuel;
-    ListeUsagers charge;
+    ListeUsagers* charge;
 } Ascenseur;
 
 // Structure pour représenter un usager
@@ -33,10 +33,7 @@ void deplacerAscenseur(Ascenseur *ascenseur, int destination) {
     }
 }
 
-// Fonction pour desservir un usager
-void desservirUsager(Usager *usager) {
-    printf("Ascenseur : Dessert l'usager à l'étage %d\n", usager->etage_destination);
-}
+
 
 // Fonction pour le code du processus usager
 void processusUsager(Usager *usager, int tube_ascenseur[2]) {
@@ -53,6 +50,7 @@ void processusUsager(Usager *usager, int tube_ascenseur[2]) {
     exit(0);
 }
 
+/*
 void ordonanceurAscenseur(Ascenseur ascenseur, int tube_ascenseur[2]){
     Usager usagers[100];
     int size_usagers = 0;
@@ -75,34 +73,89 @@ void ordonanceurAscenseur(Ascenseur ascenseur, int tube_ascenseur[2]){
         size_usagers++;
     }
 }
+*/
 
+Usager randomUsager(nombreEtage) {
+    Usager usager;
+    usager.etage_appel = rand() % nombreEtage;
+    usager.etage_destination = rand() % nombreEtage;
+    if (usager.etage_appel == usager.etage_destination) {
+        usager.etage_destination = (usager.etage_destination + 1) % nombreEtage;
+    }
+    return usager;
+}
 
-
-
-// fonction qui renvoir la destination de l'ascenseur en fonction des destinations souhaitées des usagers
-int deplacerFIFO(Ascenseur *ascenseur){
-    if(usager_sur_lee_chemin.direction == ascenseur.direction){
-        prendre_usager();
+// Fonction pour desservir un usager
+void desservirUsagers(Ascenseur* ascenseur) {
+    while(ascenseur->charge->tete->usager.etage_destination == ascenseur->etage_actuel){
+        supprimerTete(ascenseur->charge);
+        printf("Ascenseur : Dessert l'usager à l'étage %d\n", ascenseur->etage_actuel);
     }
 }
+
+void recupererUsagersMemeDirection(Ascenseur *ascenseur, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants, int destination){
+
+    ListeUsagers* liste_courante = ascenseurDirection(*ascenseur,destination) > 0 ? usagers_montants : usagers_descendants;
+
+    UsagerNode* courant = liste_courante->tete;
+
+    while(ascenseur->charge->size < CAPACITE_MAX && courant != NULL && courant->usager->etage_appel == ascenseur->etage_actuel){
+        ajouterCroissantDestination(&ascenseur->charge, courant->usager);
+        supprimerTete(&liste_courante);
+    }
+}
+
+int usagerDirection(Usager usager){
+    if((usager.etage_destination - usager.etage_appel) > 0){
+        return 1;
+    }else{
+        return 0;
+    }
+}
+
+int ascenseurDirection(Ascenseur ascenseur, int destination){
+    if((destination - ascenseur.etage_actuel) > 0){
+        return 1;
+    }else{
+        return 0;
+    }
+}
+
+// Renvoie la destination souhaitée avec un ascenseur remplis d'usagers
+int deplacerFIFO(Ascenseur *ascenseur, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants){
+    Usager* usager_destination = retournerElementEnQueue(&ascenseur->charge);
+    int destination = usager_destination->etage_destination;
+
+    return destination;    
+}
 // fonction pour savoir a quel etage aller pour récupérer un usager en fonction de la direction de destination
-int recupererFIFO(Ascenseur *ascenseur, ChainedListUsagers usagers){
-    
+int recupererFIFO(ListeUsagers* usagers){
+    Usager* usagerDestination = retournerElementEnTete(usagers);
+    int destination = usagerDestination->etage_appel;
+    return destination;
 }
 
 
-void deplacer(Ascenseur *ascenseur, ChainedListUsagers usagers){
+void processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants){
     int destination;
 
-    if(ascenseur->charge.length == 0){
-        destination = recupererFIFO(&ascenseur, usagers);
+    if(ascenseur->charge->size == 0){
+        destination = recupererFIFO(usagers);
+        //recupere l'usager si l'ascenseur est à sa destination
+        if(ascenseur->etage_actuel == destination){
+
+        }
     }else{
-        destination = deplacerFIFO(&ascenseur)
+        destination = deplacerFIFO(&ascenseur, usagers_montants, usagers_descendants);
         desservirUsagers(&ascenseur);
+        recupererUsagersMemeDirection(ascenseur, usagers_montants, usagers_descendants, destination);
     }
     
 
     //deplacer l'ascenseur
+    sleep(1);  // Temps de déplacement d'une seconde
+    ascenseur->etage_actuel += (ascenseur->etage_actuel < destination) ? 1 : -1;
+    printf("Ascenseur : À l'étage %d\n", ascenseur->etage_actuel);
 }
 
 
@@ -144,7 +197,7 @@ int main() {
 
     ordonanceurAscenseur(ascenseur,tube_ascenseur);
     while(1){
-        if(ascenseur->charge == 0){
+        if(ascenseur.charge->size == 0){
             ordonancement();
         }else{
             deplacer();
