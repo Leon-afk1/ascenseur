@@ -117,7 +117,12 @@ void recupererUsagersMemeDirection(Ascenseur *ascenseur, ListeUsagers* usagers, 
     UsagerNode* courant = liste_courante->tete;
 
     while(ascenseur->charge->size < CAPACITE_MAX && courant != NULL && courant->usager->etage_appel == ascenseur->etage_actuel){
-        ajouterCroissantDestination(ascenseur->charge, courant->usager);
+        if(ascenseurDirection(*ascenseur,destination) > 0){
+            ajouterCroissantDestination(ascenseur->charge, courant->usager);
+        }else{
+            ajouterDecroissantDestination(ascenseur->charge, courant->usager);
+        }
+        
         supprimerTete(liste_courante);
         //suprimer également de la liste globale
         supprimerUsager(usagers, courant->usager);
@@ -128,7 +133,7 @@ int usagerDirection(Usager usager){
     if((usager.etage_destination - usager.etage_appel) > 0){
         return 1;
     }else{
-        return 0;
+        return -1;
     }
 }
 
@@ -136,7 +141,7 @@ int ascenseurDirection(Ascenseur ascenseur, int destination){
     if((destination - ascenseur.etage_actuel) > 0){
         return 1;
     }else{
-        return 0;
+        return -1;
     }
 }
 
@@ -147,6 +152,7 @@ int deplacerFIFO(Ascenseur *ascenseur, ListeUsagers* usagers_montants, ListeUsag
 
     return destination;    
 }
+
 // fonction pour savoir a quel etage aller pour récupérer un usager en fonction de la direction de destination
 Usager* recupererFIFO(ListeUsagers* usagers){
     Usager* usagerDestination = retournerElementEnTete(usagers);
@@ -172,7 +178,7 @@ void processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsager
             supprimerUsager(usagers_descendants,usager);
         }
         destination = usager->etage_destination;
-        ajouterCroissantDestination(ascenseur->charge, usager);
+        ajouterEnTete(ascenseur->charge, usager);
     }else{
         destination = deplacerFIFO(&ascenseur, usagers_montants, usagers_descendants);
         desservirUsagers(&ascenseur);
