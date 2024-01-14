@@ -5,6 +5,7 @@
 #include <sys/wait.h>
 #include <time.h>
 #include "list.c"
+#include <pthread.h>
 
 #define CAPACITE_MAX 10
 #define FREQUENCE_MAX 5
@@ -16,6 +17,10 @@ typedef struct {
     ListeUsagers* charge;
 } Ascenseur;
 
+pthread_mutex_t mutexListe = PTHREAD_MUTEX_INITIALIZER;
+
+
+int ascenseurDirection(Ascenseur ascenseur, int destination);
 
 // Fonction pour faire avancer l'ascenseur d'un étage
 void deplacerAscenseur(Ascenseur *ascenseur, int destination) {
@@ -29,8 +34,6 @@ void deplacerAscenseur(Ascenseur *ascenseur, int destination) {
         printf("Ascenseur : À l'étage %d\n", ascenseur->etage_actuel);
     }
 }
-
-
 
 // Fonction pour le code du processus usager
 void processusUsager(Usager *usager, int tube_ascenseur[2]) {
@@ -46,33 +49,6 @@ void processusUsager(Usager *usager, int tube_ascenseur[2]) {
     // Le processus usager se termine
     exit(0);
 }
-
-/*
-void ordonanceurAscenseur(Ascenseur ascenseur, int tube_ascenseur[2]){
-    Usager usagers[100];
-    int size_usagers = 0;
-
-    // Le processus principal gère les déplacements de l'ascenseur
-    for (int i = 0; i < 2; i++) {
-        read(tube_ascenseur[0], &usagers[size_usagers], sizeof(Usager));
-
-        // Déplacement de l'ascenseur vers l'étage d'appel de l'usager
-        deplacerAscenseur(&ascenseur, usagers[size_usagers].etage_appel);
-
-        // Déplacement de l'ascenseur vers l'étage de destination de l'usager
-        deplacerAscenseur(&ascenseur, usagers[size_usagers].etage_destination);
-
-        // Desservir l'usager
-        desservirUsager(&usagers[size_usagers]);
-        
-        // Informer le processus usager que l'ascenseur a desservi l'usager
-        write(tube_ascenseur[1], &usagers[size_usagers], sizeof(Usager));
-        size_usagers++;
-    }
-}
-*/
-
-
 
 Usager randomUsager() {
     Usager usager;
@@ -193,56 +169,32 @@ void processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsager
 }
 
 
+void* threadAscenseur1(void* arg){
+    while(1){
+        pthread_mutex_lock(&mutexListe);
+
+        //traiter la liste des usagers
+        processusAscenseur(&ascenseur1, &usagers, &usagers_montants, &usagers_descendants);
+
+        pthread_mutex_unlock(&mutexListe);
+    }
+    return NULL;
+}
+
+
 int main() {
-
-
-    // Initialisation de la graine pour la génération aléatoire basée sur le temps actuel
-    // srand((unsigned int)time(NULL));
-
-    // Ascenseur ascenseur;
-    // ascenseur.etage_actuel = 0;
-
-    // int tube_ascenseur[2];
-    // pipe(tube_ascenseur);
-
-    // // Exemple d'appel d'ascenseur avec deux usagers
-    // Usager usager1;
-    // usager1.etage_appel = rand() % 10;             // Étage d'appel aléatoire entre 0 et 9
-    // usager1.etage_destination = rand() % 10;       // Étage de destination aléatoire entre 0 et 9
-
-    // Usager usager2;
-    // usager2.etage_appel = rand() % 10;             // Étage d'appel aléatoire entre 0 et 9
-    // usager2.etage_destination = rand() % 10;       // Étage de destination aléatoire entre 0 et 9
-
-    // // Créer un processus fils pour le premier usager
-    // pid_t pid1 = fork();
-
-    // if (pid1 == 0) {
-    //     // Code du processus fils pour le premier usager
-    //     processusUsager(&usager1, tube_ascenseur);
-    // }
-
-    // // Créer un processus fils pour le deuxième usager
-    // pid_t pid2 = fork();
-
-    // if (pid2 == 0) {
-    //     // Code du processus fils pour le deuxième usager
-    //     processusUsager(&usager2, tube_ascenseur);
-    // }
-    // close(tube_ascenseur[1]);  // Fermer le côté d'écriture du tube dans le processus principal
-
-    // //threads 
-    // processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants);
-
-    // // Attendre que les processus fils se terminent
-    // waitpid(pid1, NULL, 0);
-    // waitpid(pid2, NULL, 0);
-
     for (int i =  0; i < 10; i++) {
         Usager usager = randomUsager();
         printf("Etage appel : %d, Etage destination : %d\n", usager.etage_appel, usager.etage_destination);
     }
 
+    pthread_t threadAscenseur1;
+
+    //crétion des threads
+    pthread_create(&threadAscenseur1, NULL, threadAscenseur1, NULL);
+
+    //attendre que les threads se terminent
+    pthread_join(threadAscenseur1, NULL);
 
     return 0;
 }
