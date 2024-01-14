@@ -4,7 +4,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
-#include <list.c>
+#include "list.c"
 
 #define CAPACITE_MAX 10
 #define FREQUENCE_MAX 5
@@ -16,11 +16,6 @@ typedef struct {
     ListeUsagers* charge;
 } Ascenseur;
 
-// Structure pour représenter un usager
-typedef struct {
-    int etage_appel;
-    int etage_destination;
-} Usager;
 
 // Fonction pour faire avancer l'ascenseur d'un étage
 void deplacerAscenseur(Ascenseur *ascenseur, int destination) {
@@ -193,6 +188,8 @@ void processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsager
 
 
 int main() {
+
+
     // Initialisation de la graine pour la génération aléatoire basée sur le temps actuel
     // srand((unsigned int)time(NULL));
 
