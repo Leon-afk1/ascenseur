@@ -7,6 +7,8 @@
 #include <list.c>
 
 #define CAPACITE_MAX 10
+#define FREQUENCE_MAX 5
+#define ETAGES 10
 
 // Structure pour représenter l'ascenseur
 typedef struct {
@@ -75,14 +77,21 @@ void ordonanceurAscenseur(Ascenseur ascenseur, int tube_ascenseur[2]){
 }
 */
 
-Usager randomUsager(nombreEtage) {
+
+
+Usager randomUsager() {
+    // 1/3 
     Usager usager;
-    usager.etage_appel = rand() % nombreEtage;
-    usager.etage_destination = rand() % nombreEtage;
+    usager.etage_appel = rand() % ETAGES;
+    usager.etage_destination = rand() % ETAGES;
     if (usager.etage_appel == usager.etage_destination) {
-        usager.etage_destination = (usager.etage_destination + 1) % nombreEtage;
+        usager.etage_destination = (usager.etage_destination + 1) % ETAGES;
     }
     return usager;
+}
+
+void threadUsagers(ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants){
+
 }
 
 // Fonction pour desservir un usager
@@ -138,6 +147,9 @@ Usager* recupererFIFO(ListeUsagers* usagers){
     return usagerDestination;
 }
 
+void threadAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants){
+
+}
 
 void processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants){
     int destination;
@@ -204,14 +216,9 @@ int main() {
     }
     close(tube_ascenseur[1]);  // Fermer le côté d'écriture du tube dans le processus principal
 
-    ordonanceurAscenseur(ascenseur,tube_ascenseur);
-    while(1){
-        if(ascenseur.charge->size == 0){
-            ordonancement();
-        }else{
-            deplacer();
-        }
-    }
+    //threads 
+    processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants);
+
     // Attendre que les processus fils se terminent
     waitpid(pid1, NULL, 0);
     waitpid(pid2, NULL, 0);
