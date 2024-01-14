@@ -8,7 +8,7 @@
 #include <pthread.h>
 
 #define CAPACITE_MAX 10
-#define FREQUENCE_MAX 5
+#define FREQUENCE 5
 #define ETAGES 10
 
 // Structure pour représenter l'ascenseur
@@ -16,6 +16,16 @@ typedef struct {
     int etage_actuel;
     ListeUsagers* charge;
 } Ascenseur;
+
+
+ListeUsagers usagers;
+ListeUsagers usagers_montants;
+ListeUsagers usagers_descendants;
+Ascenseur ascenseur;
+
+
+
+
 
 pthread_mutex_t mutexListe = PTHREAD_MUTEX_INITIALIZER;
 
@@ -140,7 +150,6 @@ void processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsager
 
 
 void* threadAscenseur(void* arg){
-
     while(1){
         pthread_mutex_lock(&mutexListe);
 
@@ -151,26 +160,46 @@ void* threadAscenseur(void* arg){
 
         pthread_mutex_unlock(&mutexListe);
     }
+    return NULL;
+}
+
+
+void* threadUsagersFonction(void* arg){
+
+    while(1){
+        if(rand() % (FREQUENCE+1) == FREQUENCE){
+            Usager random_usager = randomUsager();
+            pthread_mutex_lock(&mutexListe);
+            ajouterEnTete(&usagers,&random_usager);
+            pthread_mutex_unlock(&mutexListe);
+        }
+        sleep(1);
+    }
+
+
 
     return NULL;
 }
 
 
 int main() {
+    srand(time(NULL));
     /*    
     for (int i =  0; i < 10; i++) {
         Usager usager = randomUsager();
         printf("Etage appel : %d, Etage destination : %d\n", usager.etage_appel, usager.etage_destination);
     }
     */
-
     pthread_t pthreadAscenseur;
+    pthread_t pthreadUsagers;
 
     //crétion des threads
     pthread_create(&pthreadAscenseur, NULL, threadAscenseur, NULL);
+    pthread_create(&pthreadUsagers, NULL, threadUsagersFonction, NULL);
 
     //attendre que les threads se terminent
     pthread_join(pthreadAscenseur, NULL);
+    pthread_join(pthreadUsagers,NULL);
 
     return 0;
 }
