@@ -1,57 +1,114 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 // Structure pour représenter un Usager
-typedef struct{
+typedef struct {
     int etage_appel;
     int etage_destination;
-    struct Usager* suivant;  // Pointeur vers le prochain Usager dans la liste
-}Usager;
+} Usager;
+
+typedef struct UsagerNode{
+    Usager usager;
+    struct UsagerNode* suivant;  // Pointeur vers le prochain Usager dans la liste
+}UsagerNode;
 
 // Liste chaînée d'Usagers
 typedef struct {
-    Usager* tete;
+    UsagerNode* tete;
     int size;
 }ListeUsagers;
 
 // Fonction pour créer un nouvel Usager
-struct Usager* creerUsager(int etage_appel, int etage_destination) {
-    Usager* nouvelUsager = (Usager*)malloc(sizeof(Usager));
-    nouvelUsager->etage_appel=etage_appel;
-    nouvelUsager->etage_destination=etage_destination;
+UsagerNode* creerUsager(Usager usager) {
+    UsagerNode* nouvelUsager = (UsagerNode*)malloc(sizeof(UsagerNode));
+    nouvelUsager->usager = usager;
     nouvelUsager->suivant = NULL;
     return nouvelUsager;
 }
 
+ListeUsagers* supprimerTete(ListeUsagers* liste){
+    UsagerNode* nouvelle_tete = liste->tete->suivant;
+    free(liste->tete);
+    liste->tete = nouvelle_tete;
+    return liste;
+}
+
+/*
+void supprimerUsager(ListeUsagers* liste, Usager *usager) {
+    // Cas particulier : si la liste est vide
+    if (liste->tete == NULL)
+        return;
+
+    // Cas particulier : si la valeur à supprimer est dans le premier nœud
+    if (&liste->tete->usager == usager) {
+        UsagerNode* temp = liste->tete;
+        liste->tete = liste->tete->suivant;
+        free(temp);
+        return;
+    }
+
+    // Parcours de la liste pour trouver le nœud contenant la valeur à supprimer
+    UsagerNode* current = liste->tete;
+    UsagerNode* prev = NULL;
+    while (current != NULL && &current->usager != usager) {
+        prev = current;
+        current = current->suivant;
+    }
+
+    // Si la valeur n'est pas présente dans la liste
+    if (current == NULL)
+        return;
+
+    // Suppression du nœud contenant la valeur
+    prev->suivant = current->suivant;
+    free(current);
+
+}
+*/
+
 // Fonction pour ajouter un Usager en tête de la liste
-void ajouterEnTete(ListeUsagers* liste, Usager* nouvelUsager) {
-    nouvelUsager->suivant = liste->tete;
-    liste->tete = nouvelUsager;
+void ajouterEnTete(ListeUsagers* liste, Usager nouvelUsager) {
+    UsagerNode* node = creerUsager(nouvelUsager);
+    node->suivant = liste->tete;
+    liste->tete = node;
     liste->size++;
 }
 
 // Fonction pour parcourir la liste et afficher les éléments
-void parcourirListe(ListeUsagers* liste) {
-    Usager* courant = liste->tete;
+void printListe(ListeUsagers* liste) {
+    UsagerNode* courant = liste->tete;
     while (courant != NULL) {
-        printf("etage appel : %d , etage destination : %d", courant->etage_appel, courant->etage_destination);
+        printf("etage appel : %d , etage destination : %d ", courant->usager.etage_appel, courant->usager.etage_destination);
         courant = courant->suivant;
     }
+    printf("\n");
 }
 
 // Fonction pour retourner l'élément en tête de la liste
 Usager* retournerElementEnTete(ListeUsagers* liste) {
-    return liste->tete;
+    return &liste->tete->usager;
 }
 
 // Fonction pour retourner l'élément en queue de la liste
 Usager* retournerElementEnQueue(ListeUsagers* liste) {
-    Usager* courant = liste->tete;
+    UsagerNode* courant = liste->tete;
     while (courant != NULL && courant->suivant != NULL) {
         courant = courant->suivant;
     }
-    return courant;
+    return &courant->usager;
 }
+
+void libererListe(ListeUsagers* liste){
+    UsagerNode* courant = liste->tete;
+    UsagerNode* suivant = NULL;
+    while (courant != NULL) {
+        suivant = courant->suivant;
+        free(courant);
+        courant = suivant;
+    }
+}
+
 
 int main() {
     // Initialisation d'une liste vide
@@ -59,19 +116,23 @@ int main() {
     liste.tete = NULL;
 
     // Ajout d'usagers
-    Usager* usager1 = creerUsager(1, "John Doe");
+    Usager usager1 = {1,2};
+
     ajouterEnTete(&liste, usager1);
 
-    Usager* usager2 = creerUsager(2, "Jane Doe");
+    Usager usager2 = {1,4};
     ajouterEnTete(&liste, usager2);
 
-    Usager* usager3 = creerUsager(3, "Alice");
+    Usager usager3 = {7,9};
     ajouterEnTete(&liste, usager3);
 
+    printListe(&liste);
+    supprimerUsager(&liste, &usager3);
+    printListe(&liste);
+
+
     // Libération de la mémoire (à faire à la fin du programme)
-    free(usager1);
-    free(usager2);
-    free(usager3);
+    libererListe(&liste);
 
     return 0;
 }

@@ -4,13 +4,14 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
+#include <list.c>
 
 #define CAPACITE_MAX
 
 // Structure pour représenter l'ascenseur
 typedef struct {
     int etage_actuel;
-    ChainedListUsagers charge;
+    ListeUsagers charge;
 } Ascenseur;
 
 // Structure pour représenter un usager
@@ -76,25 +77,28 @@ void ordonanceurAscenseur(Ascenseur ascenseur, int tube_ascenseur[2]){
 }
 
 
+
+
 // fonction qui renvoir la destination de l'ascenseur en fonction des destinations souhaitées des usagers
 int deplacerFIFO(Ascenseur *ascenseur){
-
-}
-// fonction pour savoir a quel etage aller pour récupérer un usager en fonction de la direction de destination
-int recupererFIFO(Ascenseur *ascenseur, ChainedListUsagers usagers){
     if(usager_sur_lee_chemin.direction == ascenseur.direction){
         prendre_usager();
     }
 }
+// fonction pour savoir a quel etage aller pour récupérer un usager en fonction de la direction de destination
+int recupererFIFO(Ascenseur *ascenseur, ChainedListUsagers usagers){
+    
+}
+
 
 void deplacer(Ascenseur *ascenseur, ChainedListUsagers usagers){
     int destination;
 
     if(ascenseur->charge.length == 0){
-        destination = recupererFIFO(ascenseur, usagers);
+        destination = recupererFIFO(&ascenseur, usagers);
     }else{
-        
-        deplacer();
+        destination = deplacerFIFO(&ascenseur)
+        desservirUsagers(&ascenseur);
     }
     
 
