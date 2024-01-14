@@ -22,33 +22,6 @@ pthread_mutex_t mutexListe = PTHREAD_MUTEX_INITIALIZER;
 
 int ascenseurDirection(Ascenseur ascenseur, int destination);
 
-// Fonction pour faire avancer l'ascenseur d'un étage
-void deplacerAscenseur(Ascenseur *ascenseur, int destination) {
-
-    printf("Ascenseur : Déplacement de l'étage %d à l'étage %d\n", ascenseur->etage_actuel, destination);
-
-    // Simulation du déplacement de l'ascenseur
-    while (ascenseur->etage_actuel != destination) {
-        sleep(1);  // Temps de déplacement d'une seconde
-        ascenseur->etage_actuel += (ascenseur->etage_actuel < destination) ? 1 : -1;
-        printf("Ascenseur : À l'étage %d\n", ascenseur->etage_actuel);
-    }
-}
-
-// Fonction pour le code du processus usager
-void processusUsager(Usager *usager, int tube_ascenseur[2]) {
-    close(tube_ascenseur[0]);  // Fermer le côté de lecture du tube
-
-    // Appel initial de l'ascenseur
-    printf("Usager : Appelle l'ascenseur à l'étage %d\n", usager->etage_appel);
-    write(tube_ascenseur[1], usager, sizeof(Usager));
-
-    // Attendre que l'ascenseur desserve l'usager
-    read(tube_ascenseur[1], usager, sizeof(Usager));
-
-    // Le processus usager se termine
-    exit(0);
-}
 
 Usager randomUsager() {
     Usager usager;
@@ -75,6 +48,22 @@ Usager randomUsager() {
 
 void threadUsagers(ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants){
 
+}
+
+int usagerDirection(Usager usager){
+    if((usager.etage_destination - usager.etage_appel) > 0){
+        return 1;
+    }else{
+        return -1;
+    }
+}
+
+int ascenseurDirection(Ascenseur ascenseur, int destination){
+    if((destination - ascenseur.etage_actuel) > 0){
+        return 1;
+    }else{
+        return -1;
+    }
 }
 
 // Fonction pour desservir un usager
@@ -105,25 +94,10 @@ void recupererUsagersMemeDirection(Ascenseur *ascenseur, ListeUsagers* usagers, 
     }
 }
 
-int usagerDirection(Usager usager){
-    if((usager.etage_destination - usager.etage_appel) > 0){
-        return 1;
-    }else{
-        return -1;
-    }
-}
-
-int ascenseurDirection(Ascenseur ascenseur, int destination){
-    if((destination - ascenseur.etage_actuel) > 0){
-        return 1;
-    }else{
-        return -1;
-    }
-}
 
 // Renvoie la destination souhaitée avec un ascenseur remplis d'usagers
 int deplacerFIFO(Ascenseur *ascenseur, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants){
-    Usager* usager_destination = retournerElementEnQueue(&ascenseur->charge);
+    Usager* usager_destination = retournerElementEnQueue(ascenseur->charge);
     int destination = usager_destination->etage_destination;
 
     return destination;    
@@ -134,10 +108,6 @@ Usager* recupererFIFO(ListeUsagers* usagers){
     Usager* usagerDestination = retournerElementEnTete(usagers);
 
     return usagerDestination;
-}
-
-void threadAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants){
-
 }
 
 void processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants){
@@ -156,8 +126,8 @@ void processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsager
         destination = usager->etage_destination;
         ajouterEnTete(ascenseur->charge, usager);
     }else{
-        destination = deplacerFIFO(&ascenseur, usagers_montants, usagers_descendants);
-        desservirUsagers(&ascenseur);
+        destination = deplacerFIFO(ascenseur, usagers_montants, usagers_descendants);
+        desservirUsagers(ascenseur);
         recupererUsagersMemeDirection(ascenseur, usagers, usagers_montants, usagers_descendants, destination);
     }
     
@@ -169,32 +139,38 @@ void processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsager
 }
 
 
-void* threadAscenseur1(void* arg){
+void* threadAscenseur(void* arg){
+
     while(1){
         pthread_mutex_lock(&mutexListe);
 
         //traiter la liste des usagers
-        processusAscenseur(&ascenseur1, &usagers, &usagers_montants, &usagers_descendants);
+        processusAscenseur(&ascenseur, &usagers, &usagers_montants, &usagers_descendants);
+        printf("oui");
+
 
         pthread_mutex_unlock(&mutexListe);
     }
+
     return NULL;
 }
 
 
 int main() {
+    /*    
     for (int i =  0; i < 10; i++) {
         Usager usager = randomUsager();
         printf("Etage appel : %d, Etage destination : %d\n", usager.etage_appel, usager.etage_destination);
     }
+    */
 
-    pthread_t threadAscenseur1;
+    pthread_t pthreadAscenseur;
 
     //crétion des threads
-    pthread_create(&threadAscenseur1, NULL, threadAscenseur1, NULL);
+    pthread_create(&pthreadAscenseur, NULL, threadAscenseur, NULL);
 
     //attendre que les threads se terminent
-    pthread_join(threadAscenseur1, NULL);
+    pthread_join(pthreadAscenseur, NULL);
 
     return 0;
 }
