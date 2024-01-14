@@ -20,9 +20,6 @@ typedef struct {
 pthread_mutex_t mutexListe = PTHREAD_MUTEX_INITIALIZER;
 
 
-int ascenseurDirection(Ascenseur ascenseur, int destination);
-
-
 Usager randomUsager() {
     Usager usager;
     // 1/3 
@@ -46,23 +43,23 @@ Usager randomUsager() {
     }
 }
 
-void threadUsagers(ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants){
-
-}
-
 int usagerDirection(Usager usager){
     if((usager.etage_destination - usager.etage_appel) > 0){
         return 1;
-    }else{
+    }else if((usager.etage_destination - usager.etage_appel) < 0){
         return -1;
+    }else{
+        return 0;
     }
 }
 
 int ascenseurDirection(Ascenseur ascenseur, int destination){
     if((destination - ascenseur.etage_actuel) > 0){
         return 1;
-    }else{
+    }else if((destination - ascenseur.etage_actuel) < 0){
         return -1;
+    }else{
+        return 0;
     }
 }
 
@@ -111,20 +108,24 @@ Usager* recupererFIFO(ListeUsagers* usagers){
 }
 
 void processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants){
-    int destination;
+    int destination = 0;
 
     if(ascenseur->charge->size == 0){
         Usager* usager = recupererFIFO(usagers);
-        //recupere l'usager si l'ascenseur est à sa destination
-        if(ascenseur->etage_actuel == destination){
-            //supprime de la liste principale
-            supprimerUsager(usagers,usager);
-            //Et des listes secondaires pour éviter les doublons
-            supprimerUsager(usagers_montants,usager);
-            supprimerUsager(usagers_descendants,usager);
+        if(usager == NULL){
+            destination = ascenseur->etage_actuel;
+        }else{
+            //recupere l'usager si l'ascenseur est à sa destination
+            if(ascenseur->etage_actuel == destination){
+                //supprime de la liste principale
+                supprimerUsager(usagers,usager);
+                //Et des listes secondaires pour éviter les doublons
+                supprimerUsager(usagers_montants,usager);
+                supprimerUsager(usagers_descendants,usager);
+            }
+            destination = usager->etage_destination;
+            ajouterEnTete(ascenseur->charge, usager);
         }
-        destination = usager->etage_destination;
-        ajouterEnTete(ascenseur->charge, usager);
     }else{
         destination = deplacerFIFO(ascenseur, usagers_montants, usagers_descendants);
         desservirUsagers(ascenseur);
@@ -145,9 +146,8 @@ void* threadAscenseur(void* arg){
         pthread_mutex_lock(&mutexListe);
 
         //traiter la liste des usagers
-        processusAscenseur(&ascenseur, &usagers, &usagers_montants, &usagers_descendants);
-        printf("oui");
-
+        //processusAscenseur(&ascenseur, &usagers, &usagers_montants, &usagers_descendants);
+        //printf("oui");
 
         pthread_mutex_unlock(&mutexListe);
     }
