@@ -9,7 +9,7 @@
 
 #define CAPACITE_MAX 10
 #define FREQUENCE 5
-#define ETAGES 10
+#define ETAGES 9
 #define INT_MAX 2147483647
 
 // Structure pour représenter l'ascenseur
@@ -80,7 +80,7 @@ void desservirUsagers(Ascenseur* ascenseur) {\
         //supprime l'usager de la liste
         free(ascenseur->charge->tete->usager);
         supprimerTete(ascenseur->charge);
-        printf("Ascenseur : Dessert l'usager à l'étage %d\n", ascenseur->etage_actuel);
+        //printf("Ascenseur : Dessert l'usager à l'étage %d\n", ascenseur->etage_actuel);
     }
 
 }
@@ -135,7 +135,6 @@ void processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsager
         
         if(usager == NULL){
             destination = ascenseur->etage_actuel;
-            printf("pas d'usager a récupérer\n");
         }else{
             //recupere l'usager si l'ascenseur est à sa destination
             destination = usager->etage_appel;
@@ -166,9 +165,55 @@ void processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsager
     }else if(ascenseur->etage_actuel > destination){
         ascenseur->etage_actuel += -1;
     }
-    printf("Ascenseur : À l'étage %d, charge: %d, destination suivante: %d\n", ascenseur->etage_actuel, ascenseur->charge->size, destination);
+
+    Render(ascenseur,usagers,destination);
     
 }
+
+void Render(Ascenseur *ascenseur, ListeUsagers* usagers,int destination){
+    for(int y = 0;y<ETAGES + 1;y++){
+        printf("\33[2K\r");
+        printf("\033[A");
+    }
+
+    for(int i = 0;i<ETAGES + 1;i++){
+        
+        printf("  %d ",ETAGES-i);
+        if(destination == ETAGES-i){
+            printf("► | ");
+        }else{
+            printf("  | ");
+        }
+        if(ascenseur->etage_actuel == ETAGES-i){
+            printf("█%d ",ascenseur->charge->size);
+        }else{
+            printf("   ");
+        }
+        UsagerNode* curseur = usagers->tete;
+        int up = 0;
+        int down = 0;
+        for(int x = 0;x<usagers->size;x++){
+            if(curseur->usager->etage_appel == ETAGES-i){
+                up += usagerDirection(*curseur->usager) > 0 ? 1 : 0;
+                down += usagerDirection(*curseur->usager) < 0 ? 1 : 0;
+            }
+            curseur = curseur->suivant;
+        }
+        if(up == 0){
+            printf(" | ▲ -");
+        }else{
+            printf(" | ▲ %d",up);
+        }
+        if(down == 0){
+            printf(" | ▼ -");
+        }else{
+            printf(" | ▼ %d",down);
+        }
+        printf("\n");
+
+}
+}
+
 
 
 void* threadAscenseur(void* arg){
@@ -199,7 +244,7 @@ void* threadUsagersFonction(void* arg){
             ajouterCroissantDestination(&usagers_montants,random_usager);
         else
             ajouterDecroissantDestination(&usagers_descendants,random_usager);
-        printf("Usager : Appelle l'ascenseur à l'étage %d, vers %d\n", random_usager->etage_appel,random_usager->etage_destination);
+        //printf("Usager : Appelle l'ascenseur à l'étage %d, vers %d\n", random_usager->etage_appel,random_usager->etage_destination);
         //printListe(&usagers);
         pthread_mutex_unlock(&mutexListe);
 
