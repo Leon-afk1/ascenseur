@@ -16,6 +16,8 @@
 typedef struct {
     int etage_actuel;
     ListeUsagers* charge;
+    Usager* usagerPrisEnCharge;
+    int destination;
 } Ascenseur;
 
 
@@ -94,9 +96,7 @@ void recupererUsagersMemeDirection(Ascenseur* ascenseur, ListeUsagers* usagers, 
     UsagerNode* courant = liste_courante->tete;
     while (courant != NULL && courant->usager->etage_appel == ascenseur->etage_actuel) {
         if (ascenseurDirection(*ascenseur, destination) * usagerDirection(*courant->usager) > 0) {
-            printf("Ajoute l'usager à la charge : A=%d, D=%d\n", courant->usager->etage_appel, courant->usager->etage_destination);
             ajouterCroissantDestination(ascenseur->charge, courant->usager);
-            ascenseur->usagerPrisEnCharge = courant->usager;
         } else {
             printf("Ignore l'usager : A=%d, D=%d\n", courant->usager->etage_appel, courant->usager->etage_destination);
         }
@@ -134,39 +134,38 @@ Usager* recupererFIFO(ListeUsagers* usagers){
 }
 
 void processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants) {
-    int destination = 0;
+    
 
     if (ascenseur->charge->size == 0) {
         Usager* usager = recupererFIFO(usagers);
+        ascenseur->usagerPrisEnCharge = usager;
+        supprimerUsager(usagers, usager);
+        supprimerUsager(usagers_montants, usager);
+        supprimerUsager(usagers_descendants, usager);
 
         if (usager == NULL) {
-            destination = ascenseur->etage_actuel;
+            ascenseur->destination = ascenseur->etage_actuel;
         } else {
-            destination = usager->etage_appel;
+            ascenseur->destination = usager->etage_appel;
 
-            if (ascenseur->etage_actuel == destination) {
-                supprimerUsager(usagers, usager);
-                supprimerUsager(usagers_montants, usager);
-                supprimerUsager(usagers_descendants, usager);
-
-                ajouterEnTete(ascenseur->charge, usager);
-                ascenseur->usagerPrisEnCharge = usager;
+            if (ascenseur->etage_actuel == ascenseur->destination) {
+                ajouterEnTete(ascenseur->charge, ascenseur->usagerPrisEnCharge);
             }
         }
 
     } else {
-        destination = deplacerFIFO(ascenseur, usagers_montants, usagers_descendants);
+        ascenseur->destination = deplacerFIFO(ascenseur, usagers_montants, usagers_descendants);
         desservirUsagers(ascenseur);
         //recupererUsagersMemeDirection(ascenseur, usagers, usagers_montants, usagers_descendants, destination);
     }
 
-    if (ascenseur->etage_actuel < destination) {
+    if (ascenseur->etage_actuel < ascenseur->destination) {
         ascenseur->etage_actuel += 1;
-    } else if (ascenseur->etage_actuel > destination) {
+    } else if (ascenseur->etage_actuel > ascenseur->destination) {
         ascenseur->etage_actuel += -1;
     }
 
-    Render(ascenseur, usagers, destination);
+    Render(ascenseur, usagers, ascenseur->destination);
 }
 
 void Render(Ascenseur *ascenseur, ListeUsagers* usagers,int destination){
@@ -176,7 +175,7 @@ void Render(Ascenseur *ascenseur, ListeUsagers* usagers,int destination){
     }
 
     for(int i = 0;i<ETAGES + 1;i++){
-        
+        printf("%d ",ETAGES-i);
         if(destination == ETAGES-i){
             printf("► | ");
         }else{
@@ -271,10 +270,12 @@ int main() {
     ascenseur1.charge = &charge;
     ascenseur1.etage_actuel = 0;
     ascenseur1.usagerPrisEnCharge = NULL;
+    ascenseur1.destination = 0;
 
     ascenseur2.charge = &charge;
     ascenseur2.etage_actuel = 0;
     ascenseur2.usagerPrisEnCharge = NULL;
+    ascenseur2.destination = 0;
 
     pthread_t pthreadAscenseur;
     pthread_t pthreadUsagers;
