@@ -28,6 +28,9 @@ UsagerNode* creerUsager(Usager* usager) {
 }
 
 void supprimerTete(ListeUsagers* liste){
+    if(liste->tete == NULL){
+        return;
+    }
     UsagerNode* nouvelle_tete = liste->tete->suivant;
     free(liste->tete);
     liste->tete = nouvelle_tete;
@@ -75,11 +78,31 @@ void ajouterEnTete(ListeUsagers* liste, Usager* nouvelUsager) {
     liste->size++;
 }
 
+// Fonction pour ajouter un élément en queue de la liste
+void ajouterEnQueue(ListeUsagers* liste, Usager* nouvelUsager) {
+    UsagerNode* node = creerUsager(nouvelUsager);  // Supposons que creerUsagerNode est une fonction qui crée un nouveau noeud
+    if (liste->tete == NULL) {
+        // Si la liste est vide, le nouvel élément devient la tête de la liste
+        liste->tete = node;
+    } else {
+        // Sinon, parcourir la liste jusqu'à la fin et ajouter le nouvel élément en queue
+        UsagerNode* courant = liste->tete;
+        while (courant->suivant != NULL) {
+            courant = courant->suivant;
+        }
+        courant->suivant = node;
+    }
+    liste->size++;
+}
+
+
 // Fonction pour parcourir la liste et afficher les éléments
 void printListe(ListeUsagers* liste) {
+    if(liste->size == 0)
+        printf("liste vide");
     UsagerNode* courant = liste->tete;
     while (courant != NULL) {
-        printf("etage appel : %d , etage destination : %d ", courant->usager->etage_appel, courant->usager->etage_destination);
+        printf("A : %d , D : %d || ", courant->usager->etage_appel, courant->usager->etage_destination);
         courant = courant->suivant;
     }
     printf("\n");
@@ -87,6 +110,9 @@ void printListe(ListeUsagers* liste) {
 
 // Fonction pour retourner l'élément en tête de la liste
 Usager* retournerElementEnTete(ListeUsagers* liste) {
+    if(liste->size == 0){
+        return NULL;
+    }
     return liste->tete->usager;
 }
 
@@ -104,7 +130,9 @@ void libererListe(ListeUsagers* liste){
     UsagerNode* suivant = NULL;
     while (courant != NULL) {
         suivant = courant->suivant;
+        free(courant->usager);
         free(courant);
+        
         courant = suivant;
     }
 }
@@ -223,7 +251,7 @@ int main() {
 
 
     // Libération de la mémoire (à faire à la fin du programme)
-    libererListe(&liste);
+    
 
     return 0;
 }
