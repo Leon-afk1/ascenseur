@@ -22,9 +22,12 @@ typedef struct {
 ListeUsagers usagers;
 ListeUsagers usagers_montants;
 ListeUsagers usagers_descendants;
-Ascenseur ascenseur;
+Ascenseur ascenseur1;
+Ascenseur ascenseur2;
 
 
+// Function prototype for Render
+void Render(Ascenseur *ascenseur, ListeUsagers* usagers,int destination);
 
 
 
@@ -74,47 +77,50 @@ int ascenseurDirection(Ascenseur ascenseur, int destination){
 }
 
 // Fonction pour desservir un usager
-void desservirUsagers(Ascenseur* ascenseur) {\
-
-    while(ascenseur->charge->size != 0 && ascenseur->charge->tete->usager->etage_destination == ascenseur->etage_actuel){
-        //supprime l'usager de la liste
+void desservirUsagers(Ascenseur* ascenseur) {
+    while (ascenseur->charge->size != 0 && ascenseur->charge->tete->usager->etage_destination == ascenseur->etage_actuel) {
         free(ascenseur->charge->tete->usager);
         supprimerTete(ascenseur->charge);
-        //printf("Ascenseur : Dessert l'usager à l'étage %d\n", ascenseur->etage_actuel);
     }
-
 }
 
-void recupererUsagersMemeDirection(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants, int destination){
+void recupererUsagersMemeDirection(Ascenseur* ascenseur, ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants, int destination) {
+    ListeUsagers* liste_courante = ascenseurDirection(*ascenseur, destination) > 0 ? usagers_montants : usagers_descendants;
 
-    ListeUsagers* liste_courante = ascenseurDirection(*ascenseur,destination) > 0 ? usagers_montants : usagers_descendants;
-
-    if(liste_courante->size == 0){
+    if (liste_courante->size == 0) {
         return;
     }
 
     UsagerNode* courant = liste_courante->tete;
-
-    while(ascenseur->charge->size < CAPACITE_MAX && courant != NULL && courant->usager->etage_appel == ascenseur->etage_actuel){
-        if(ascenseurDirection(*ascenseur,destination) > 0){
+    while (courant != NULL && courant->usager->etage_appel == ascenseur->etage_actuel) {
+        if (ascenseurDirection(*ascenseur, destination) * usagerDirection(*courant->usager) > 0) {
+            printf("Ajoute l'usager à la charge : A=%d, D=%d\n", courant->usager->etage_appel, courant->usager->etage_destination);
             ajouterCroissantDestination(ascenseur->charge, courant->usager);
-        }else{
-            ajouterDecroissantDestination(ascenseur->charge, courant->usager);
+            ascenseur->usagerPrisEnCharge = courant->usager;
+        } else {
+            printf("Ignore l'usager : A=%d, D=%d\n", courant->usager->etage_appel, courant->usager->etage_destination);
         }
-        
         supprimerTete(liste_courante);
-        //suprimer également de la liste globale
         supprimerUsager(usagers, courant->usager);
+        courant = courant->suivant;
     }
 }
 
 
-// Renvoie la destination souhaitée avec un ascenseur remplis d'usagers
-int deplacerFIFO(Ascenseur *ascenseur, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants){
-    Usager* usager_destination = retournerElementEnQueue(ascenseur->charge);
-    int destination = usager_destination->etage_destination;
 
-    return destination;    
+// Renvoie la destination souhaitée avec un ascenseur remplis d'usagers
+int deplacerFIFO(Ascenseur *ascenseur, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants) {
+    if (ascenseur->etage_actuel == INT_MAX) {
+        return 0;  // Ascenseur inactif, ne pas se déplacer
+    }
+
+    if (ascenseur->charge->size == 0) {
+        // Si l'ascenseur est vide, choisir la destination basée sur la direction
+        return (ascenseur->etage_actuel + ascenseur->charge->tete->usager->etage_destination) / 2;
+    }
+
+    // L'ascenseur est déjà en mouvement, continuez vers la destination actuelle
+    return ascenseur->charge->tete->usager->etage_destination;
 }
 
 // fonction pour savoir a quel etage aller pour récupérer un usager en fonction de la direction de destination
@@ -127,47 +133,40 @@ Usager* recupererFIFO(ListeUsagers* usagers){
     return usagerDestination;
 }
 
-void processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants){
+void processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants) {
     int destination = 0;
 
-    if(ascenseur->charge->size == 0){
+    if (ascenseur->charge->size == 0) {
         Usager* usager = recupererFIFO(usagers);
-        
-        if(usager == NULL){
+
+        if (usager == NULL) {
             destination = ascenseur->etage_actuel;
-        }else{
-            //recupere l'usager si l'ascenseur est à sa destination
+        } else {
             destination = usager->etage_appel;
 
-            if(ascenseur->etage_actuel == destination){
-                //supprime de la liste principale
-                supprimerUsager(usagers,usager);
-                //Et des listes secondaires pour éviter les doublons
-                supprimerUsager(usagers_montants,usager);
-                supprimerUsager(usagers_descendants,usager);
+            if (ascenseur->etage_actuel == destination) {
+                supprimerUsager(usagers, usager);
+                supprimerUsager(usagers_montants, usager);
+                supprimerUsager(usagers_descendants, usager);
 
                 ajouterEnTete(ascenseur->charge, usager);
+                ascenseur->usagerPrisEnCharge = usager;
             }
         }
-        
-    }
-    else{
+
+    } else {
         destination = deplacerFIFO(ascenseur, usagers_montants, usagers_descendants);
         desservirUsagers(ascenseur);
-        recupererUsagersMemeDirection(ascenseur, usagers, usagers_montants, usagers_descendants, destination);
+        //recupererUsagersMemeDirection(ascenseur, usagers, usagers_montants, usagers_descendants, destination);
     }
-    
-    
 
-    //deplacer l'ascenseur 
-    if(ascenseur->etage_actuel < destination){
+    if (ascenseur->etage_actuel < destination) {
         ascenseur->etage_actuel += 1;
-    }else if(ascenseur->etage_actuel > destination){
+    } else if (ascenseur->etage_actuel > destination) {
         ascenseur->etage_actuel += -1;
     }
 
-    Render(ascenseur,usagers,destination);
-    
+    Render(ascenseur, usagers, destination);
 }
 
 void Render(Ascenseur *ascenseur, ListeUsagers* usagers,int destination){
@@ -178,7 +177,6 @@ void Render(Ascenseur *ascenseur, ListeUsagers* usagers,int destination){
 
     for(int i = 0;i<ETAGES + 1;i++){
         
-        printf("  %d ",ETAGES-i);
         if(destination == ETAGES-i){
             printf("► | ");
         }else{
@@ -216,16 +214,16 @@ void Render(Ascenseur *ascenseur, ListeUsagers* usagers,int destination){
 
 
 
-void* threadAscenseur(void* arg){
-    while(1){
-        pthread_mutex_lock(&mutexListe);
-        //printf("debutthreaD");
-        //traiter la liste des usagers
-        processusAscenseur(&ascenseur, &usagers, &usagers_montants, &usagers_descendants);
+void* threadAscenseur(void* arg) {
+    Ascenseur* ascenseur = (Ascenseur*)arg;
 
+    while (1) {
+        pthread_mutex_lock(&mutexListe);
+        processusAscenseur(ascenseur, &usagers, &usagers_montants, &usagers_descendants);
         pthread_mutex_unlock(&mutexListe);
         sleep(1);
     }
+
     return NULL;
 }
 
@@ -269,26 +267,31 @@ int main() {
     ListeUsagers charge;
     charge.tete = NULL;
     charge.size = 0;
-    ascenseur.charge = &charge;
-    ascenseur.etage_actuel = 0;
 
+    ascenseur1.charge = &charge;
+    ascenseur1.etage_actuel = 0;
+    ascenseur1.usagerPrisEnCharge = NULL;
 
-    /*    
-    for (int i =  0; i < 10; i++) {
-        Usager usager = randomUsager();
-        printf("Etage appel : %d, Etage destination : %d\n", usager.etage_appel, usager.etage_destination);
-    }
-    */
+    ascenseur2.charge = &charge;
+    ascenseur2.etage_actuel = 0;
+    ascenseur2.usagerPrisEnCharge = NULL;
+
     pthread_t pthreadAscenseur;
     pthread_t pthreadUsagers;
+    pthread_t pthreadAscenseur2;
+
 
     //crétion des threads
-    pthread_create(&pthreadAscenseur, NULL, threadAscenseur, NULL);
+    pthread_create(&pthreadAscenseur, NULL, threadAscenseur, (void*)&ascenseur1);
+    pthread_create(&pthreadAscenseur2, NULL, threadAscenseur, (void*)&ascenseur2);
     pthread_create(&pthreadUsagers, NULL, threadUsagersFonction, NULL);
+
+
 
     //attendre que les threads se terminent
     pthread_join(pthreadAscenseur, NULL);
     pthread_join(pthreadUsagers,NULL);
+    pthread_join(pthreadAscenseur2,NULL);
 
     return 0;
 }
