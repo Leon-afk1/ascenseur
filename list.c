@@ -48,6 +48,7 @@ void supprimerUsager(ListeUsagers* liste, Usager *usager) {
         UsagerNode* temp = liste->tete;
         liste->tete = liste->tete->suivant;
         free(temp);
+        liste->size--;
         return;
     }
 
@@ -66,7 +67,7 @@ void supprimerUsager(ListeUsagers* liste, Usager *usager) {
     // Suppression du nœud contenant la valeur
     prev->suivant = current->suivant;
     free(current);
-
+    liste->size--;
 }
 
 

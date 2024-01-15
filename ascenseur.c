@@ -8,7 +8,7 @@
 #include <pthread.h>
 
 #define CAPACITE_MAX 10
-#define FREQUENCE 10
+#define FREQUENCE 5
 #define ETAGES 10
 #define INT_MAX 2147483647
 
@@ -131,7 +131,6 @@ void processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsager
     int destination = 0;
 
     if(ascenseur->charge->size == 0){
-        printf("charge nulle\n");
         Usager* usager = recupererFIFO(usagers);
         
         if(usager == NULL){
@@ -154,13 +153,9 @@ void processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsager
         
     }
     else{
-        printf("charge non nulle\n");
         destination = deplacerFIFO(ascenseur, usagers_montants, usagers_descendants);
-        printf("avant2\n");
         desservirUsagers(ascenseur);
-        printf("avant\n");
         recupererUsagersMemeDirection(ascenseur, usagers, usagers_montants, usagers_descendants, destination);
-        printf("apres\n");
     }
     
     
@@ -204,7 +199,7 @@ void* threadUsagersFonction(void* arg){
             ajouterCroissantDestination(&usagers_montants,random_usager);
         else
             ajouterDecroissantDestination(&usagers_descendants,random_usager);
-        printf("Usager : Appelle l'ascenseur à l'étage %d\n", random_usager->etage_appel);
+        printf("Usager : Appelle l'ascenseur à l'étage %d, vers %d\n", random_usager->etage_appel,random_usager->etage_destination);
         //printListe(&usagers);
         pthread_mutex_unlock(&mutexListe);
 
