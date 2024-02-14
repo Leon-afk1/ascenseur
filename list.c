@@ -2,258 +2,214 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-// Structure pour représenter un Usager
+// Structure to represent a User
 typedef struct {
-    int etage_appel;
-    int etage_destination;
-} Usager;
+    int floor_call;           // Floor where the user called the elevator
+    int destination_floor;    // Floor to which the user wants to go
+} User;
 
-typedef struct UsagerNode{
-    Usager* usager;
-    struct UsagerNode* suivant;  // Pointeur vers le prochain Usager dans la liste
-}UsagerNode;
+// Node structure for the linked list of Users
+typedef struct UserNode {
+    User* user;               // Pointer to the User structure
+    struct UserNode* next;    // Pointer to the next UserNode in the list
+} UserNode;
 
-// Liste chaînée d'Usagers
+// Linked list of Users
 typedef struct {
-    UsagerNode* tete;
-    int size;
-}ListeUsagers;
+    UserNode* head;    // Pointer to the first UserNode in the list
+    int size;          // Number of elements in the list
+} UserList;
 
-// Fonction pour créer un nouvel Usager
-UsagerNode* creerUsager(Usager* usager) {
-    UsagerNode* nouvelUsager = (UsagerNode*)malloc(sizeof(UsagerNode));
-    nouvelUsager->usager = usager;
-    nouvelUsager->suivant = NULL;
-    return nouvelUsager;
+// Function to create a new UserNode
+UserNode* createUser(User* user) {
+    UserNode* newUser = (UserNode*)malloc(sizeof(UserNode));
+    newUser->user = user;
+    newUser->next = NULL;
+    return newUser;
 }
 
-void supprimerTete(ListeUsagers* liste){
-    if(liste->tete == NULL){
+// Function to delete the head of the list
+void deleteHead(UserList* list) {
+    if (list->head == NULL) {
         return;
     }
-    UsagerNode* nouvelle_tete = liste->tete->suivant;
-    free(liste->tete);
-    liste->tete = nouvelle_tete;
-    liste->size--;
+    UserNode* newHead = list->head->next;
+    free(list->head);
+    list->head = newHead;
+    list->size--;
 }
 
-
-void supprimerUsager(ListeUsagers* liste, Usager *usager) {
-    // Cas particulier : si la liste est vide
-    if (liste->tete == NULL)
+// Function to delete a specific User from the list
+void deleteUser(UserList* list, User* user) {
+    // Special case: if the list is empty
+    if (list->head == NULL)
         return;
 
-    // Cas particulier : si la valeur à supprimer est dans le premier nœud
-    if (liste->tete->usager == usager) {
-        UsagerNode* temp = liste->tete;
-        liste->tete = liste->tete->suivant;
+    // Special case: if the value to delete is in the first node
+    if (list->head->user == user) {
+        UserNode* temp = list->head;
+        list->head = list->head->next;
         free(temp);
-        liste->size--;
+        list->size--;
         return;
     }
 
-    // Parcours de la liste pour trouver le nœud contenant la valeur à supprimer
-    UsagerNode* current = liste->tete;
-    UsagerNode* prev = NULL;
-    while (current != NULL && current->usager != usager) {
+    // Traverse the list to find the node containing the value to delete
+    UserNode* current = list->head;
+    UserNode* prev = NULL;
+    while (current != NULL && current->user != user) {
         prev = current;
-        current = current->suivant;
+        current = current->next;
     }
 
-    // Si la valeur n'est pas présente dans la liste
+    // If the value is not present in the list
     if (current == NULL)
         return;
 
-    // Suppression du nœud contenant la valeur
-    prev->suivant = current->suivant;
+    // Delete the node containing the value
+    prev->next = current->next;
     free(current);
-    liste->size--;
+    list->size--;
 }
 
-
-// Fonction pour ajouter un Usager en tête de la liste
-void ajouterEnTete(ListeUsagers* liste, Usager* nouvelUsager) {
-    UsagerNode* node = creerUsager(nouvelUsager);
-    node->suivant = liste->tete;
-    liste->tete = node;
-    liste->size++;
+// Function to add a User at the head of the list
+void addToHead(UserList* list, User* newUser) {
+    UserNode* node = createUser(newUser);
+    node->next = list->head;
+    list->head = node;
+    list->size++;
 }
 
-// Fonction pour ajouter un élément en queue de la liste
-void ajouterEnQueue(ListeUsagers* liste, Usager* nouvelUsager) {
-    UsagerNode* node = creerUsager(nouvelUsager);  // Supposons que creerUsagerNode est une fonction qui crée un nouveau noeud
-    if (liste->tete == NULL) {
-        // Si la liste est vide, le nouvel élément devient la tête de la liste
-        liste->tete = node;
+// Function to add an element at the end of the list
+void addToEnd(UserList* list, User* newUser) {
+    UserNode* node = createUser(newUser);
+    if (list->head == NULL) {
+        // If the list is empty, the new element becomes the head of the list
+        list->head = node;
     } else {
-        // Sinon, parcourir la liste jusqu'à la fin et ajouter le nouvel élément en queue
-        UsagerNode* courant = liste->tete;
-        while (courant->suivant != NULL) {
-            courant = courant->suivant;
+        // Otherwise, traverse the list to the end and add the new element at the end
+        UserNode* current = list->head;
+        while (current->next != NULL) {
+            current = current->next;
         }
-        courant->suivant = node;
+        current->next = node;
     }
-    liste->size++;
+    list->size++;
 }
 
-
-// Fonction pour parcourir la liste et afficher les éléments
-void printListe(ListeUsagers* liste) {
-    if(liste->size == 0)
-        printf("liste vide");
-    UsagerNode* courant = liste->tete;
-    while (courant != NULL) {
-        printf("A : %d , D : %d || ", courant->usager->etage_appel, courant->usager->etage_destination);
-        courant = courant->suivant;
+// Function to traverse the list and print the elements
+void printList(UserList* list) {
+    if (list->size == 0)
+        printf("empty list");
+    UserNode* current = list->head;
+    while (current != NULL) {
+        printf("Call: %d , Destination: %d || ", current->user->floor_call, current->user->destination_floor);
+        current = current->next;
     }
     printf("\n");
 }
 
-// Fonction pour retourner l'élément en tête de la liste
-Usager* retournerElementEnTete(ListeUsagers* liste) {
-    if(liste->size == 0){
+// Function to return the element at the head of the list
+User* getHeadElement(UserList* list) {
+    if (list->size == 0) {
         return NULL;
     }
-    return liste->tete->usager;
+    return list->head->user;
 }
 
-// Fonction pour retourner l'élément en queue de la liste
-Usager* retournerElementEnQueue(ListeUsagers* liste) {
-    UsagerNode* courant = liste->tete;
-    while (courant != NULL && courant->suivant != NULL) {
-        courant = courant->suivant;
+// Function to return the element at the end of the list
+User* getEndElement(UserList* list) {
+    UserNode* current = list->head;
+    while (current != NULL && current->next != NULL) {
+        current = current->next;
     }
-    return courant->usager;
+    return current->user;
 }
 
-void libererListe(ListeUsagers* liste){
-    UsagerNode* courant = liste->tete;
-    UsagerNode* suivant = NULL;
-    while (courant != NULL) {
-        suivant = courant->suivant;
-        free(courant->usager);
-        free(courant);
-        
-        courant = suivant;
+// Function to free the memory used by the list
+void freeList(UserList* list) {
+    UserNode* current = list->head;
+    UserNode* next = NULL;
+    while (current != NULL) {
+        next = current->next;
+        free(current->user);
+        free(current);
+        current = next;
     }
 }
 
-
-void ajouterCroissantDestination(ListeUsagers* liste, Usager* nouvelUsager) {
-    UsagerNode* node = creerUsager(nouvelUsager);
-    UsagerNode* courant = liste->tete;
-    UsagerNode* precedent = NULL;
-    while (courant != NULL && courant->usager->etage_destination < nouvelUsager->etage_destination) {
-        precedent = courant;
-        courant = courant->suivant;
+// Function to add a User to the list in ascending order of destination floor
+void addToAscendingDestination(UserList* list, User* newUser) {
+    UserNode* node = createUser(newUser);
+    UserNode* current = list->head;
+    UserNode* previous = NULL;
+    while (current != NULL && current->user->destination_floor < newUser->destination_floor) {
+        previous = current;
+        current = current->next;
     }
-    if (precedent == NULL) {
-        node->suivant = liste->tete;
-        liste->tete = node;
+    if (previous == NULL) {
+        node->next = list->head;
+        list->head = node;
+    } else {
+        previous->next = node;
+        node->next = current;
     }
-    else {
-        precedent->suivant = node;
-        node->suivant = courant;
-    }
-    liste->size++;
+    list->size++;
 }
 
-void ajouterDecroissantDestination(ListeUsagers* liste, Usager* nouvelUsager) {
-    UsagerNode* node = creerUsager(nouvelUsager);
-    UsagerNode* courant = liste->tete;
-    UsagerNode* precedent = NULL;
-    while (courant != NULL && courant->usager->etage_destination > nouvelUsager->etage_destination) {
-        precedent = courant;
-        courant = courant->suivant;
+// Function to add a User to the list in descending order of destination floor
+void addToDescendingDestination(UserList* list, User* newUser) {
+    UserNode* node = createUser(newUser);
+    UserNode* current = list->head;
+    UserNode* previous = NULL;
+    while (current != NULL && current->user->destination_floor > newUser->destination_floor) {
+        previous = current;
+        current = current->next;
     }
-    if (precedent == NULL) {
-        node->suivant = liste->tete;
-        liste->tete = node;
+    if (previous == NULL) {
+        node->next = list->head;
+        list->head = node;
+    } else {
+        previous->next = node;
+        node->next = current;
     }
-    else {
-        precedent->suivant = node;
-        node->suivant = courant;
-    }
-    liste->size++;
+    list->size++;
 }
 
-
-void ajouterCroissantAppel(ListeUsagers* liste, Usager* nouvelUsager) {
-    UsagerNode* node = creerUsager(nouvelUsager);
-    UsagerNode* courant = liste->tete;
-    UsagerNode* precedent = NULL;
-    while (courant != NULL && courant->usager->etage_appel < nouvelUsager->etage_appel) {
-        precedent = courant;
-        courant = courant->suivant;
+// Function to add a User to the list in ascending order of floor call
+void addToAscendingCall(UserList* list, User* newUser) {
+    UserNode* node = createUser(newUser);
+    UserNode* current = list->head;
+    UserNode* previous = NULL;
+    while (current != NULL && current->user->floor_call < newUser->floor_call) {
+        previous = current;
+        current = current->next;
     }
-    if (precedent == NULL) {
-        node->suivant = liste->tete;
-        liste->tete = node;
+    if (previous == NULL) {
+        node->next = list->head;
+        list->head = node;
+    } else {
+        previous->next = node;
+        node->next = current;
     }
-    else {
-        precedent->suivant = node;
-        node->suivant = courant;
-    }
-    liste->size++;
+    list->size++;
 }
 
-void ajouterDecroissantAppel(ListeUsagers* liste, Usager* nouvelUsager) {
-    UsagerNode* node = creerUsager(nouvelUsager);
-    UsagerNode* courant = liste->tete;
-    UsagerNode* precedent = NULL;
-    while (courant != NULL && courant->usager->etage_appel > nouvelUsager->etage_appel) {
-        precedent = courant;
-        courant = courant->suivant;
+// Function to add a User to the list in descending order of floor call
+void addToDescendingCall(UserList* list, User* newUser) {
+    UserNode* node = createUser(newUser);
+    UserNode* current = list->head;
+    UserNode* previous = NULL;
+    while (current != NULL && current->user->floor_call > newUser->floor_call) {
+        previous = current;
+        current = current->next;
     }
-    if (precedent == NULL) {
-        node->suivant = liste->tete;
-        liste->tete = node;
+    if (previous == NULL) {
+        node->next = list->head;
+        list->head = node;
+    } else {
+        previous->next = node;
+        node->next = current;
     }
-    else {
-        precedent->suivant = node;
-        node->suivant = courant;
-    }
-    liste->size++;
+    list->size++;
 }
-
-/*
-int main() {
-    // Initialisation d'une liste vide
-    ListeUsagers liste;
-    ListeUsagers liste2;
-    liste.tete = NULL;
-    liste2.tete = NULL;
-
-    // Ajout d'usagers
-    Usager usager1 = {1,2};
-
-    ajouterEnTete(&liste, &usager1);
-    ajouterEnTete(&liste2, &usager1);
-
-    Usager usager2 = {1,4};
-    ajouterEnTete(&liste, &usager2);
-
-    Usager usager3 = {7,9};
-    ajouterEnTete(&liste, &usager3);
-
-    printListe(&liste);
-
-
-    Usager usager4 = {7,6};
-    ajouterDecroissantDestination(&liste, &usager4);
-
-    printListe(&liste);
-    printListe(&liste2);
-    supprimerUsager(&liste,&usager1);
-    supprimerUsager(&liste2,&usager1);
-    printListe(&liste);
-    printListe(&liste2);
-    
-
-
-    // Libération de la mémoire (à faire à la fin du programme)
-    
-
-    return 0;
-}
-*/

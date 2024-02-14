@@ -4,227 +4,242 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
-#include "list.c"
+#include "list.c"  
 #include <pthread.h>
 
-#define CAPACITE_MAX 10
-#define FREQUENCE 2
-#define ETAGES 9
+#define MAX_CAPACITY 10
+#define FREQUENCY 2
+#define FLOORS 9
 #define INT_MAX 2147483647
 
-// Structure pour représenter l'ascenseur
+// Structure to represent an elevator
 typedef struct {
-    int etage_actuel;
-    ListeUsagers* charge;
-    Usager* usagerPrisEnCharge;
+    int current_floor;
+    UserList *load;  // List of users in the elevator
+    User *passengerInCharge;  // User currently in the elevator
     int destination;
-} Ascenseur;
+} Elevator;
 
+// Global lists to store all users, upward users, and downward users
+UserList users;
+UserList upwardUsers;
+UserList downwardUsers;
 
-ListeUsagers usagers;
-ListeUsagers usagers_montants;
-ListeUsagers usagers_descendants;
-Ascenseur ascenseur1;
-Ascenseur ascenseur2;
+// Two elevator instances
+Elevator elevator1;
+Elevator elevator2;
 
-pthread_mutex_t mutexListe = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t listMutex = PTHREAD_MUTEX_INITIALIZER;  // Mutex for thread safety
 
-
-Usager randomUsager() {
-    Usager usager;
-    // 1/3 
-    int etage_0 = rand() % 6;
-    if (etage_0 == 0) {
-        usager.etage_appel = 0;
-        usager.etage_destination = rand() % (ETAGES - 1) + 1;
-        return usager;
-    }else if (etage_0 == 1) {
-        usager.etage_appel = rand() % (ETAGES - 1) + 1;
-        usager.etage_destination = 0;
-        return usager;
-    }else{
-        usager.etage_appel = rand() % (ETAGES);
-        usager.etage_destination = rand() % (ETAGES);
-        while (usager.etage_appel == usager.etage_destination) {
-            usager.etage_destination = rand() % (ETAGES);
+// Function to generate a random user
+User getRandomUser() {
+    User user;
+    // 1/3 chance for each type of user (call from 0, call from a floor, or random call/destination)
+    int floor_0 = rand() % 6;
+    if (floor_0 == 0) {
+        user.floor_call = 0;
+        do {
+            user.destination_floor = rand() % (FLOORS - 1) + 1;
+        } while (user.destination_floor == 0);
+        return user;
+    } else if (floor_0 == 1) {
+        do {
+            user.floor_call = rand() % (FLOORS - 1) + 1;
+        } while (user.floor_call == 0);
+        user.destination_floor = 0;
+        return user;
+    } else {
+        user.floor_call = rand() % (FLOORS);
+        user.destination_floor = rand() % (FLOORS);
+        while (user.floor_call == user.destination_floor) {
+            user.destination_floor = rand() % (FLOORS);
         }
-        return usager;
+        return user;
     }
 }
 
-int usagerDirection(Usager* usager){
-    if(usager == NULL){
+// Function to determine the direction of a user's movement (1 for up, -1 for down, 0 for no movement)
+int userDirection(User *user) {
+    if (user == NULL) {
         return 0;
     }
-    if((usager->etage_destination - usager->etage_appel) > 0){
+    if ((user->destination_floor - user->floor_call) > 0) {
         return 1;
-    }else if((usager->etage_destination - usager->etage_appel) < 0){
+    } else if ((user->destination_floor - user->floor_call) < 0) {
         return -1;
-    }else{
+    } else {
         return 0;
     }
 }
 
-int ascenseurDirection(Ascenseur ascenseur, int destination){
-    if((destination - ascenseur.etage_actuel) > 0){
+// Function to determine the direction of an elevator's movement (1 for up, -1 for down, 0 for no movement)
+int elevatorDirection(Elevator elevator, int destination) {
+    if ((destination - elevator.current_floor) > 0) {
         return 1;
-    }else if((destination - ascenseur.etage_actuel) < 0){
+    } else if ((destination - elevator.current_floor) < 0) {
         return -1;
-    }else{
+    } else {
         return 0;
     }
 }
 
-// Fonction pour desservir un usager
-void desservirUsagers(Ascenseur* ascenseur) {
-    while (ascenseur->charge->size != 0 && ascenseur->charge->tete->usager->etage_destination == ascenseur->etage_actuel) {
-        free(ascenseur->charge->tete->usager);
-        supprimerTete(ascenseur->charge);
+// Function to serve users in the elevator
+void serveUsers(Elevator *elevator) {
+    while (elevator->load->size != 0 && elevator->load->head->user->destination_floor == elevator->current_floor) {
+        free(elevator->load->head->user);
+        deleteHead(elevator->load);
     }
 }
 
-void recupererUsagersMemeDirection(Ascenseur* ascenseur, ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants, int destination) {
-    ListeUsagers* liste_courante = ascenseurDirection(*ascenseur, destination) > 0 ? usagers_montants : usagers_descendants;
+// Function to retrieve users in the same direction as the elevator's destination
+void retrieveUsersSameDirection(Elevator *elevator, UserList *users, UserList *upwardUsers, UserList *downwardUsers, int destination) {
+    UserList *currentList = elevatorDirection(*elevator, destination) > 0 ? upwardUsers : downwardUsers;
 
-    if (liste_courante->size == 0) {
+    if (currentList->size == 0) {
         return;
     }
 
-    UsagerNode* courant = liste_courante->tete;
-    while (courant != NULL && courant->usager->etage_appel == ascenseur->etage_actuel) {
-        if (ascenseurDirection(*ascenseur, destination) * usagerDirection(courant->usager) > 0) {
-            ajouterCroissantDestination(ascenseur->charge, courant->usager);
+    UserNode *current = currentList->head;
+    while (current != NULL && current->user->floor_call == elevator->current_floor) {
+        if (elevatorDirection(*elevator, destination) * userDirection(current->user) > 0) {
+            addToAscendingDestination(elevator->load, current->user);
         } else {
-            printf("Ignore l'usager : A=%d, D=%d\n", courant->usager->etage_appel, courant->usager->etage_destination);
+            printf("Ignore user: Call=%d, Destination=%d\n", current->user->floor_call, current->user->destination_floor);
         }
-        supprimerTete(liste_courante);
-        supprimerUsager(usagers, courant->usager);
-        courant = courant->suivant;
+        deleteHead(currentList);
+        deleteUser(users, current->user);
+        current = current->next;
     }
 }
 
-
-
-// Renvoie la destination souhaitée avec un ascenseur remplis d'usagers
-int deplacerFIFO(Ascenseur *ascenseur, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants) {
-    if (ascenseur->etage_actuel == INT_MAX) {
-        return 0;  // Ascenseur inactif, ne pas se déplacer
+// Return the desired destination with a fully loaded elevator
+int moveFIFO(Elevator *elevator, UserList *upwardUsers, UserList *downwardUsers) {
+    if (elevator->current_floor == INT_MAX) {
+        return 0;  // Inactive elevator, do not move
     }
 
-    if (ascenseur->charge->size == 0) {
-        // Si l'ascenseur est vide, choisir la destination basée sur la direction
-        return (ascenseur->etage_actuel + ascenseur->charge->tete->usager->etage_destination) / 2;
+    if (elevator->load->size == 0) {
+        // If the elevator is empty, choose the destination based on the direction
+        if (elevator->load->head != NULL) {
+            return (elevator->current_floor + elevator->load->head->user->destination_floor) / 2;
+        } else {
+            return elevator->current_floor;  // No passengers, stay on the current floor
+        }
     }
 
-    // L'ascenseur est déjà en mouvement, continuez vers la destination actuelle
-    return ascenseur->charge->tete->usager->etage_destination;
+    // The elevator is already in motion, continue towards the current destination
+    if (elevator->load->head != NULL) {
+        return elevator->load->head->user->destination_floor;
+    } else {
+        return elevator->current_floor;  // No passengers, stay on the current floor
+    }
 }
 
-// fonction pour savoir a quel etage aller pour récupérer un usager en fonction de la direction de destination
-Usager* recupererFIFO(ListeUsagers* usagers){
-    if(usagers->size == 0){
+// Function to determine which floor to go to pick up a user based on the destination direction
+User *retrieveFIFO(UserList *users) {
+    if (users->size == 0) {
         return NULL;
     }
-    Usager* usagerDestination = retournerElementEnTete(usagers);
-
-    return usagerDestination;
+    User *userDestination = getHeadElement(users);
+    return userDestination;
 }
 
-void processusAscenseur(Ascenseur *ascenseur, ListeUsagers* usagers, ListeUsagers* usagers_montants, ListeUsagers* usagers_descendants) {
-
-    if (ascenseur->charge->size == 0) {
-        if(ascenseur->usagerPrisEnCharge == NULL){
-            Usager* usager = recupererFIFO(usagers);
-            if (usager == NULL) {
-                ascenseur->destination = ascenseur->etage_actuel;
-            }else{
-                ascenseur->usagerPrisEnCharge = usager;
-                ascenseur->destination = usager->etage_appel;
-                supprimerUsager(usagers, usager);
-                supprimerUsager(usagers_montants, usager);
-                supprimerUsager(usagers_descendants, usager);
+// Function to process the elevator's movement and user handling
+void elevatorProcess(Elevator *elevator, UserList *users, UserList *upwardUsers, UserList *downwardUsers) {
+    if (elevator->load->size == 0) {
+        if (elevator->passengerInCharge == NULL) {
+            User *user = retrieveFIFO(users);
+            if (user == NULL) {
+                elevator->destination = elevator->current_floor;
+            } else {
+                elevator->passengerInCharge = user;
+                elevator->destination = user->floor_call;
+                deleteUser(users, user);
+                deleteUser(upwardUsers, user);
+                deleteUser(downwardUsers, user);
             }
-        }else if(ascenseur->etage_actuel == ascenseur->destination){
-            ajouterEnTete(ascenseur->charge, ascenseur->usagerPrisEnCharge);
-            ascenseur->usagerPrisEnCharge = NULL;
+        } else if (elevator->current_floor == elevator->destination) {
+            addToHead(elevator->load, elevator->passengerInCharge);
+            elevator->passengerInCharge = NULL;
         }
     } else {
-        ascenseur->destination = deplacerFIFO(ascenseur, usagers_montants, usagers_descendants);
-        desservirUsagers(ascenseur);
-        //recupererUsagersMemeDirection(ascenseur, usagers, usagers_montants, usagers_descendants, destination);
+        elevator->destination = moveFIFO(elevator, upwardUsers, downwardUsers);
+        serveUsers(elevator);
+        retrieveUsersSameDirection(elevator, users, upwardUsers, downwardUsers, elevator->destination);
     }
 
-    if (ascenseur->etage_actuel < ascenseur->destination) {
-        ascenseur->etage_actuel += 1;
-    } else if (ascenseur->etage_actuel > ascenseur->destination) {
-        ascenseur->etage_actuel -= 1;
+    if (elevator->current_floor < elevator->destination) {
+        elevator->current_floor += 1;
+    } else if (elevator->current_floor > elevator->destination) {
+        elevator->current_floor -= 1;
     }
 }
 
-void Render(){
-    for(int y = 0;y<ETAGES + 1;y++){
+// Function to render the state of elevators and users
+void Render() {
+    for (int y = 0; y < FLOORS + 1; y++) {
         printf("\33[2K\r");
         printf("\033[A");
     }
-    for(int i = 0;i<ETAGES + 1;i++){
-        printf("%d  ",ETAGES-i);
-        if(ascenseur1.destination == ETAGES-i || ascenseur2.destination == ETAGES-i){
+    for (int i = 0; i < FLOORS + 1; i++) {
+        printf("%d  ", FLOORS - i);
+        if (elevator1.destination == FLOORS - i || elevator2.destination == FLOORS - i) {
             printf("► | ");
-        }else{
+        } else {
             printf("  | ");
         }
 
-        if(ascenseur1.etage_actuel == ETAGES-i){
-            printf("█%d ",ascenseur1.charge->size);
-        }else {
-            printf("   ");
-        }
-        
-        if(ascenseur2.etage_actuel == ETAGES-i){
-            printf("█%d ",ascenseur2.charge->size);
-        }else {
+        if (elevator1.current_floor == FLOORS - i) {
+            printf("█%d ", elevator1.load->size);
+        } else {
             printf("   ");
         }
 
-        UsagerNode* curseur = usagers.tete;
+        if (elevator2.current_floor == FLOORS - i) {
+            printf("█%d ", elevator2.load->size);
+        } else {
+            printf("   ");
+        }
+
+        UserNode *cursor = users.head;
         int up = 0;
         int down = 0;
-        for(int x = 0;x<usagers.size;x++){
-            if(curseur->usager->etage_appel == ETAGES-i){
-                up += usagerDirection(curseur->usager) > 0 ? 1 : 0;
-                down += usagerDirection(curseur->usager) < 0 ? 1 : 0;
+        for (int x = 0; x < users.size; x++) {
+            if (cursor->user->floor_call == FLOORS - i) {
+                up += userDirection(cursor->user) > 0 ? 1 : 0;
+                down += userDirection(cursor->user) < 0 ? 1 : 0;
             }
-            curseur = curseur->suivant;
+            cursor = cursor->next;
         }
-        if(ascenseur1.usagerPrisEnCharge != NULL && ascenseur1.usagerPrisEnCharge->etage_appel == ETAGES - i){
-            if(usagerDirection(ascenseur1.usagerPrisEnCharge) < 0)
+        if (elevator1.passengerInCharge != NULL && elevator1.passengerInCharge->floor_call == FLOORS - i) {
+            if (userDirection(elevator1.passengerInCharge) < 0)
                 down++;
-            if(usagerDirection(ascenseur1.usagerPrisEnCharge) > 0)
+            if (userDirection(elevator1.passengerInCharge) > 0)
                 up++;
         }
-        if(ascenseur2.usagerPrisEnCharge != NULL && ascenseur2.usagerPrisEnCharge->etage_appel == ETAGES - i){
-            if(usagerDirection(ascenseur2.usagerPrisEnCharge) < 0)
+        if (elevator2.passengerInCharge != NULL && elevator2.passengerInCharge->floor_call == FLOORS - i) {
+            if (userDirection(elevator2.passengerInCharge) < 0)
                 down++;
-            if(usagerDirection(ascenseur2.usagerPrisEnCharge) > 0)
+            if (userDirection(elevator2.passengerInCharge) > 0)
                 up++;
         }
-        
-        if(up == 0){
+
+        if (up == 0) {
             printf(" | ▲ -");
-        }else{
-            printf(" | ▲ %d",up);
+        } else {
+            printf(" | ▲ %d", up);
         }
-        if(down == 0){
+        if (down == 0) {
             printf(" | ▼ -");
-        }else{
-            printf(" | ▼ %d",down);
+        } else {
+            printf(" | ▼ %d", down);
         }
         printf("\n");
-
     }
 }
 
-void* threadAffichage(void* arg){
+// Function for the display thread to continuously render the state
+void *displayThread(void *arg) {
     while (1) {
         Render();
         sleep(1);
@@ -233,92 +248,88 @@ void* threadAffichage(void* arg){
     return NULL;
 }
 
-void* threadAscenseur(void* arg) {
-    Ascenseur* ascenseur = (Ascenseur*)arg;
+// Function for the elevator thread to process elevator movements
+void *elevatorThread(void *arg) {
+    Elevator *elevator = (Elevator *)arg;
 
     while (1) {
-        pthread_mutex_lock(&mutexListe);
-        processusAscenseur(ascenseur, &usagers, &usagers_montants, &usagers_descendants);
-        pthread_mutex_unlock(&mutexListe);
+        pthread_mutex_lock(&listMutex);
+        elevatorProcess(elevator, &users, &upwardUsers, &downwardUsers);
+        pthread_mutex_unlock(&listMutex);
         sleep(1);
     }
 
     return NULL;
 }
 
-
-void* threadUsagersFonction(void* arg){
-    if(FREQUENCE == 0){
+// Function for the user thread to generate random users
+void *userThreadFunction(void *arg) {
+    if (FREQUENCY == 0) {
         exit(0);
     }
-    while(1){
-        pthread_mutex_lock(&mutexListe);
+    while (1) {
+        pthread_mutex_lock(&listMutex);
 
-        Usager* random_usager = (Usager*)malloc(sizeof(Usager));
-        *random_usager = randomUsager();
-        ajouterEnQueue(&usagers,random_usager);
-        if(usagerDirection(random_usager) > 0)
-            ajouterCroissantDestination(&usagers_montants,random_usager);
+        User *randomUser = (User *)malloc(sizeof(User));
+        *randomUser = getRandomUser();
+        addToEnd(&users, randomUser);
+        if (userDirection(randomUser) > 0)
+            addToAscendingDestination(&upwardUsers, randomUser);
         else
-            ajouterDecroissantDestination(&usagers_descendants,random_usager);
-        //printf("Usager : Appelle l'ascenseur à l'étage %d, vers %d\n", random_usager->etage_appel,random_usager->etage_destination);
-        //printListe(&usagers);
-        pthread_mutex_unlock(&mutexListe);
+            addToDescendingDestination(&downwardUsers, randomUser);
+        pthread_mutex_unlock(&listMutex);
 
-        float tts = 1 + (float)rand()/INT_MAX  * FREQUENCE * 2;
+        float tts = 1 + (float)rand() / INT_MAX * FREQUENCY * 2;
         sleep(tts);
     }
 
     return NULL;
 }
 
-
 int main() {
     printf("\n");
     srand(time(NULL));
-    usagers.tete = NULL;
-    usagers.size = 0;
-    usagers_montants.tete = NULL;
-    usagers_montants.size = 0;
-    usagers_descendants.tete = NULL;
-    usagers_descendants.size = 0;
 
+    // Initialize user lists, elevators, and mutex
+    users.head = NULL;
+    users.size = 0;
+    upwardUsers.head = NULL;
+    upwardUsers.size = 0;
+    downwardUsers.head = NULL;
+    downwardUsers.size = 0;
 
-    ListeUsagers charge1,charge2;
-    charge1.tete = NULL;
-    charge1.size = 0;
-    charge2.tete = NULL;
-    charge2.size = 0;
+    UserList load1, load2;
+    load1.head = NULL;
+    load1.size = 0;
+    load2.head = NULL;
+    load2.size = 0;
 
-    ascenseur1.charge = &charge1;
-    ascenseur1.etage_actuel = 0;
-    ascenseur1.usagerPrisEnCharge = NULL;
-    ascenseur1.destination = 0;
+    elevator1.load = &load1;
+    elevator1.current_floor = 0;
+    elevator1.passengerInCharge = NULL;
+    elevator1.destination = 0;
 
-    ascenseur2.charge = &charge2;
-    ascenseur2.etage_actuel = 0;
-    ascenseur2.usagerPrisEnCharge = NULL;
-    ascenseur2.destination = 0;
+    elevator2.load = &load2;
+    elevator2.current_floor = 0;
+    elevator2.passengerInCharge = NULL;
+    elevator2.destination = 0;
 
-    pthread_t pthreadUsagers;
-    pthread_t pthreadAscenseur1;
-    pthread_t pthreadAscenseur2;
-    pthread_t pthreadAffichage;
+    // Create threads
+    pthread_t pthreadUsers;
+    pthread_t pthreadElevator1;
+    pthread_t pthreadElevator2;
+    pthread_t pthreadDisplay;
 
-    //crétion des threads
-    pthread_create(&pthreadUsagers, NULL, threadUsagersFonction, NULL);
-    pthread_create(&pthreadAscenseur1, NULL, threadAscenseur, (void*)&ascenseur1);
-    pthread_create(&pthreadAscenseur2, NULL, threadAscenseur, (void*)&ascenseur2);
-    pthread_create(&pthreadAffichage, NULL, threadAffichage, NULL);
-    
+    pthread_create(&pthreadUsers, NULL, userThreadFunction, NULL);
+    pthread_create(&pthreadElevator1, NULL, elevatorThread, (void *)&elevator1);
+    pthread_create(&pthreadElevator2, NULL, elevatorThread, (void *)&elevator2);
+    pthread_create(&pthreadDisplay, NULL, displayThread, NULL);
 
-
-
-    //attendre que les threads se terminent
-    pthread_join(pthreadUsagers,NULL);
-    pthread_join(pthreadAscenseur1, NULL);
-    pthread_join(pthreadAscenseur2,NULL);
-    pthread_join(pthreadAffichage,NULL);
+    // Wait for threads to finish
+    pthread_join(pthreadUsers, NULL);
+    pthread_join(pthreadElevator1, NULL);
+    pthread_join(pthreadElevator2, NULL);
+    pthread_join(pthreadDisplay, NULL);
 
     return 0;
 }
